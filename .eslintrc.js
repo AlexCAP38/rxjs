@@ -31,6 +31,7 @@ module.exports = {
         // "react"
     ],
     "rules": {
+        //'@typescript-eslint/no-explicit-any': 'off', // временно не «жаловался» на тип any
         'indent': [
             'error',
             4

@@ -1,35 +1,64 @@
 import '../pages/index.css';
+//*************************/
+
+import { fromEvent, withLatestFrom, map, merge, mergeWith } from "rxjs";
+
+import { inRange, toNumber } from './helpers';
+import { value$ } from './state';
+
+
+const buttonMinus = document.querySelector<HTMLButtonElement>('.button_minus');
+const buttonPlus = document.querySelector<HTMLButtonElement>('.button_plus');
+const input = document.querySelector<HTMLInputElement>('.input');
+const progress = document.querySelector<HTMLProgressElement>('.progress');
+const mute = document.querySelector<HTMLButtonElement>('.mute');
+
+
+if (buttonMinus && buttonPlus && input && progress && mute) {
+  /* Подписываемся на изменение данных */
+
+  value$.subscribe(value => {
+    input.value = String(value);
+    progress.value = value;
+  });
+
+  /* Создаём поток из нажатий на кнопку - */
+  const decrements$ = fromEvent(buttonMinus, 'click')
+
+    /* Превращаем каждый элемент потока в -1 */
+    .pipe(map(() => -5));
+
+  /* Создаём поток из нажатий на кнопку + */
+  const increments$ = fromEvent(buttonPlus, 'click')
+    /* Превращаем каждый элемент потока в 1 */
+    .pipe(map(() => 5));
+
+  /* Создаём поток изменений поля ввода */
+  const byInput$ = fromEvent(input, 'change')
+    /* Превращаем каждый элемент потока в значение поле ввода */
+    .pipe(map(() => toNumber(input.value)));
+
+
+    const mute$ = fromEvent(mute, 'click')
+
+    // .subscribe(()=>{
+    //   buttonMinus.disabled=!buttonMinus.disabled;
+    //   buttonPlus.disabled=!buttonPlus.disabled;
+    //   input.disabled=!input.disabled;
+    // })
 
 
 
-const myInt: number = 12
-const mayBeUndef: number | undefined = undefined
-
-const summ = myInt + mayBeUndef
-// ошибка TS: mayBeUndef может быть undefined,
-// мы должны что-то сделать на этот случай, например дать фолбэк
-
-const summ = myInt + (mayBeUndef || 12)
-// если в mayBeUndef нет значения, то вторым слагаемым будет 12
-
-
-const users = [
-  {
-        name: "Oby",
-        age: 12,
-    },
-  {
-        name: "Heera",
-        data: {
-             avatar: "image"
-        }
-    },
-];
-
-const loggedInUser = users.find((u) => u.name === loggedInUsername);
-
-console.log(loggedInUser.age);
-// ошибка TSL: 'loggedInUser' может быть undefined
-
-console.log(loggedInUser.data.avatar);
-// oшибка TSL: 'data' может быть undefined
+  /* Объединяем потоки инкремента и декремента */
+  merge(decrements$, increments$).pipe(
+    /* Присоединяем к каждому элементу последнее значение громкости */
+    withLatestFrom(value$),
+    /* Складываем предыдущее значение и инкремент */
+    map(([increment, previous]) => previous + increment),
+    /* Объедняем с потоком значений поля ввода */
+    mergeWith(byInput$),
+    /* Корректируем результат, чтобы он не выходил за пределы допустимого интервала */
+    map(inRange(0, 100)),
+    /* Помещаем каждое новое значение в поток значений уровня громкости */
+  ).subscribe(result => value$.next(result));
+}
